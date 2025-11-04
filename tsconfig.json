@@ -7,9 +7,14 @@
     /* === Environment Settings === */
     "module": "ESNext",
     "target": "ESNext",
-    "moduleResolution": "Bundler",  // Modern module resolution for ESM projects
+    "moduleResolution": "Bundler", // works with ESM
     "lib": ["ESNext"],
     "types": ["node"],
+
+    /* === TypeORM Decorators === */
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strictPropertyInitialization": false, // avoid errors in entities
 
     /* === Output Options === */
     "sourceMap": true,
@@ -23,7 +28,7 @@
     "skipLibCheck": true,
 
     /* === Module + Import Behavior === */
-    "verbatimModuleSyntax": true,   // keep modern ESM exports
+    "verbatimModuleSyntax": true, // keep modern ESM exports
     "isolatedModules": true,
     "moduleDetection": "force",
     "noUncheckedSideEffectImports": true,
