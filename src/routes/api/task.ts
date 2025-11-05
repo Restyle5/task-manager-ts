@@ -4,12 +4,13 @@ import { createTaskSchema, updateTaskSchema } from '../../validators/task-valida
 import { validate } from '../../middlewares/body-validation.js';
 const router = Express.Router();
 
-// create task
-router.post('/', validate(createTaskSchema), TaskController.create);
-router.get('/all', TaskController.getAll);
-router.get('/:id', TaskController.getById);
-router.put('/:id', validate(updateTaskSchema), TaskController.update);
-router.delete('/:id', TaskController.delete);
+const taskController = new TaskController();
 
+// create task
+router.post('/', validate(createTaskSchema), taskController.create);
+router.get('/all', taskController.getAll);
+router.get('/:id', taskController.getById);
+router.put('/:id', validate(updateTaskSchema), taskController.update);
+router.delete('/:id', taskController.delete);
 
 export default router;

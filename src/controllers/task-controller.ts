@@ -7,7 +7,7 @@ import type User from "../entities/User";
 const taskRepository = AppDataSource.getRepository(Task);
 
 class TaskController extends BaseController {
-  static async create(req: Request, res: Response): Promise<void> {
+   async create(req: Request, res: Response): Promise<void> {
     const { title, description } = req.body;
 
     const task = new Task();
@@ -24,14 +24,14 @@ class TaskController extends BaseController {
     res.status(201).json(newTask);
   }
 
-  static async getAll(req: Request, res: Response): Promise<void> {
+   async getAll(req: Request, res: Response): Promise<void> {
     const tasks: Task[] = await taskRepository.find({
       where: { user: { id: (req.user.details as User).id } },
     });
     res.status(200).json(tasks);
   }
 
-  static async getById(req: Request, res: Response): Promise<void> {
+   async getById(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
     if (id) {
       const task: Task | null = await taskRepository.findOne({
@@ -50,7 +50,7 @@ class TaskController extends BaseController {
     }
   }
 
-  static async update(req: Request, res: Response): Promise<void> {
+   async update(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
     const { title, description, status } = req.body;
     
@@ -79,7 +79,7 @@ class TaskController extends BaseController {
     res.status(200).json(updatedTask);
   }
 
-  static async delete(req: Request, res: Response): Promise<void> {
+   async delete(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
 
     if(!id) {   
