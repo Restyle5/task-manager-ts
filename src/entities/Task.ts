@@ -8,11 +8,13 @@ import {
   JoinColumn,
   DeleteDateColumn,
   JoinTable,
+  OneToMany,
   ManyToMany,
 } from "typeorm";
 import User from "./User.js";
 import Tag from "./Tag.js";
 import { TaskStatus } from "../enums/TaskEnum.js";
+import TaskLog from "./TaskLog.js";
 
 @Entity()
 export default class Task {
@@ -42,7 +44,7 @@ export default class Task {
   deleted_at?: Date | null;
 
   /**
-   * Relations
+   * Relationships
    */
   @ManyToOne(() => User, (user) => user.tasks, {
     nullable: true,
@@ -54,11 +56,13 @@ export default class Task {
   @ManyToMany(() => Tag, {
     cascade: true,
   })
-
   @JoinTable({
     name: "task_tags",
     joinColumn: { name: "task_id", referencedColumnName: "id" },
     inverseJoinColumn: { name: "tag_id", referencedColumnName: "id" },
   })
   tags!: Tag[];
+
+  @OneToMany(() => TaskLog, (log) => log.task)
+  logs!: TaskLog[];
 }

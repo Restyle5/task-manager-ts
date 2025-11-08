@@ -29,7 +29,7 @@ export default class TagController extends controller {
 
   async update(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
-    const { name, status } = req.body;
+    const { name } = req.body;
 
     if (!id) {
       res.status(400).json({ message: "Tag ID is required" });
@@ -44,7 +44,6 @@ export default class TagController extends controller {
     }
 
     tagToUpdate.name = name || tagToUpdate.name;
-    tagToUpdate.status = status ?? tagToUpdate.status;
 
     const updatedTag = await tagRepository.save(tagToUpdate);
     res.status(200).json(updatedTag);
