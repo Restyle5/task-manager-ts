@@ -4,7 +4,8 @@ import Task from "../entities/Task.js";
 import { AppDataSource } from "../data-source.js";
 import type User from "../entities/User";
 import Tag from "../entities/Tag.js";
-import { In } from "typeorm";
+import { In, Like } from "typeorm";
+import { arraysEqualIgnoreOrder } from "../services/helper.js";
 
 const taskRepository = AppDataSource.getRepository(Task);
 const tagRepository = AppDataSource.getRepository(Tag);
@@ -55,7 +56,7 @@ class TaskController extends BaseController {
           id: parseInt(id, 10),
           user: { id: (req.user.details as User).id },
         },
-        relations: ["tags"],
+        relations: ["tags", "logs"],
       });
       if (!task) {
         res.status(404).json({ message: "Task not found" });
@@ -68,49 +69,64 @@ class TaskController extends BaseController {
   }
 
   async update(req: Request, res: Response): Promise<void> {
-    try {
-      const { id } = req.params;
-      const { title, description, status, tags: tagIds } = req.body;
+  const { id } = req.params;
+  const { title, description, status, tags: tagIds } = req.body;
+  const user = req.user.details as User;
 
-      if (!id) {
-        res.status(400).json({ message: "Task ID is required" });
-        return;
-      }
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
 
-      const task = await taskRepository.findOne({
-        where: {
-          id: parseInt(id, 10),
-          user: { id: (req.user.details as User).id },
-        },
-        relations: ["tags"],
-      });
-
-      if (!task) {
-        res.status(404).json({ message: "Task not found" });
-        return;
-      }
-
-      if (Array.isArray(tagIds)) {
-        if (tagIds.length > 0) {
-          const tags = await tagRepository.findBy({ id: In(tagIds) });
-          task.tags = tags;
-        } else {
-          task.tags = [];
-        }
-      }
-
-      task.title = title ?? task.title;
-      task.description = description ?? task.description;
-      task.status = status ?? task.status;
-
-      const updatedTask = await taskRepository.save(task);
-
-      res.status(200).json(updatedTask);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Failed to update task" });
-    }
+  // attach user context
+  queryRunner.data = { user };
+  if (!id) {
+    res.status(400).json({ message: "Task ID is required" });
+    return;
   }
+
+  try {
+    await queryRunner.startTransaction();
+
+    const task = await queryRunner.manager.findOne(Task, {
+      where: { id: parseInt(id, 10), user: { id: user.id } },
+      relations: ["tags"],
+    });
+
+    if (!task) {
+      await queryRunner.rollbackTransaction();
+      res.status(404).json({ message: "Task not found" });
+      return;
+    }
+
+    if (Array.isArray(tagIds)) {
+      const currentTagIds = (task.tags ?? []).map((t) => t.id);
+      if (!arraysEqualIgnoreOrder(currentTagIds, tagIds)) {
+        const tags =
+          tagIds.length > 0
+            ? await queryRunner.manager.findBy(Tag, { id: In(tagIds) })
+            : [];
+        task.tags = tags;
+      }
+    }
+
+    task.title = title ?? task.title;
+    task.description = description ?? task.description;
+    task.status = status ?? task.status;
+    task.updated_at = new Date();
+
+    // ✅ Use the same queryRunner’s manager
+    const updatedTask = await queryRunner.manager.save(task);
+
+    await queryRunner.commitTransaction();
+    res.status(200).json(updatedTask);
+  } catch (error) {
+    console.error(error);
+    await queryRunner.rollbackTransaction();
+    res.status(500).json({ message: "Failed to update task" });
+  } finally {
+    await queryRunner.release();
+  }
+}
+
 
   async delete(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
@@ -134,6 +150,31 @@ class TaskController extends BaseController {
 
     await taskRepository.softRemove(task);
     res.status(200).json({ message: "Task deleted successfully" });
+  }
+
+  async paginate(req: Request, res: Response): Promise<void> {
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 10;
+    const name = req.query.name as string | undefined;
+
+    const skip = (page - 1) * limit;
+
+    const [tasks, total] = await taskRepository.findAndCount({
+      skip,
+      take: limit,
+      where: {
+        ...(name && { title: Like(`%${name}%`) }),
+        user: { id: (req.user.details as User).id },
+      },
+      relations: ["tags"],
+    });
+
+    res.status(200).json({
+      data: tasks,
+      total,
+      page,
+      last_page: Math.ceil(total / limit),
+    });
   }
 }
 

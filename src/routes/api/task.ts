@@ -10,6 +10,7 @@ const taskController = new TaskController();
 router.post('/', validate(createTaskSchema), taskController.create);
 router.get('/all', taskController.getAll);
 router.get('/:id', taskController.getById);
+router.get('/', taskController.paginate);
 router.put('/:id', validate(updateTaskSchema), taskController.update);
 router.delete('/:id', taskController.delete);
 
